@@ -38,3 +38,4 @@
 /mapfile
 /tools/python/__pycache__/
 libavformat/workspace.code-workspace
+.vscode/c_cpp_properties.json
