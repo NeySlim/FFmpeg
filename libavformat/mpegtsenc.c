@@ -1583,33 +1583,12 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
 
 int ff_check_h264_startcode(AVFormatContext *s, const AVStream *st, const AVPacket *pkt)
 {
-    if (pkt->size < 5 || AV_RB32(pkt->data) != 0x0000001 && AV_RB24(pkt->data) != 0x000001) {
-        if (!st->nb_frames) {
-            av_log(s, AV_LOG_ERROR, "H.264 bitstream malformed, "
-                   "no startcode found, use the video bitstream filter 'h264_mp4toannexb' to fix it "
-                   "('-bsf:v h264_mp4toannexb' option with ffmpeg)\n");
-            return AVERROR_INVALIDDATA;
-        }
-        av_log(s, AV_LOG_WARNING, "H.264 bitstream error, startcode missing, size %d", pkt->size);
-        if (pkt->size)
-            av_log(s, AV_LOG_WARNING, " data %08"PRIX32, AV_RB32(pkt->data));
-        av_log(s, AV_LOG_WARNING, "\n");
-    }
     return 0;
 }
 
 static int check_hevc_startcode(AVFormatContext *s, const AVStream *st, const AVPacket *pkt)
 {
-    if (pkt->size < 5 || AV_RB32(pkt->data) != 0x0000001 && AV_RB24(pkt->data) != 0x000001) {
-        if (!st->nb_frames) {
-            av_log(s, AV_LOG_ERROR, "HEVC bitstream malformed, no startcode found\n");
-            return AVERROR_PATCHWELCOME;
-        }
-        av_log(s, AV_LOG_WARNING, "HEVC bitstream error, startcode missing, size %d", pkt->size);
-        if (pkt->size)
-            av_log(s, AV_LOG_WARNING, " data %08"PRIX32, AV_RB32(pkt->data));
-        av_log(s, AV_LOG_WARNING, "\n");
-    }
+    
     return 0;
 }
 
@@ -1746,11 +1725,12 @@ static int mpegts_write_packet_internal(AVFormatContext *s, AVPacket *pkt)
         if ((AV_RB16(pkt->data) & 0xfff0) != 0xfff0) {
             int ret;
             AVPacket pkt2;
-
+            
             if (!ts_st->amux) {
                 av_log(s, AV_LOG_ERROR, "AAC bitstream not in ADTS format "
                                         "and extradata missing\n");
             } else {
+            
                 av_init_packet(&pkt2);
                 pkt2.data = pkt->data;
                 pkt2.size = pkt->size;
