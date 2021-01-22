@@ -381,7 +381,31 @@ static BOOL WINAPI CtrlHandler(DWORD fdwCtrlType) {
 }
 #endif
 
-void term_init(void) {
+
+#ifdef __linux__
+#define SIGNAL(sig, func)               \
+    do {                                \
+        action.sa_handler = func;       \
+        sigaction(sig, &action, NULL);  \
+    } while (0)
+#else
+#define SIGNAL(sig, func) \
+    signal(sig, func)
+#endif
+
+void term_init(void)
+{
+#if defined __linux__
+    struct sigaction action = {0};
+    action.sa_handler = sigterm_handler;
+
+    /* block other interrupts while processing this one */
+    sigfillset(&action.sa_mask);
+
+    /* restart interruptible functions (i.e. don't fail with EINTR)  */
+    action.sa_flags = SA_RESTART;
+#endif
+
 #if HAVE_TERMIOS_H
     if (!run_as_daemon && stdin_interaction) {
         struct termios tty;
@@ -399,14 +423,16 @@ void term_init(void) {
 
             tcsetattr(0, TCSANOW, &tty);
         }
-        signal(SIGQUIT, sigterm_handler); /* Quit (POSIX).  */
+        SIGNAL(SIGQUIT, sigterm_handler); /* Quit (POSIX).  */
     }
 #endif
 
-    signal(SIGINT, sigterm_handler);  /* Interrupt (ANSI).    */
-    signal(SIGTERM, sigterm_handler); /* Termination (ANSI).  */
+
+    SIGNAL(SIGINT , sigterm_handler); /* Interrupt (ANSI).    */
+    SIGNAL(SIGTERM, sigterm_handler); /* Termination (ANSI).  */
+
 #ifdef SIGXCPU
-    signal(SIGXCPU, sigterm_handler);
+    SIGNAL(SIGXCPU, sigterm_handler);
 #endif
 #ifdef SIGPIPE
     signal(SIGPIPE, SIG_IGN); /* Broken pipe (POSIX). */
@@ -758,7 +784,9 @@ static void write_packet(OutputFile *of, AVPacket *pkt, OutputStream *ost, int u
 
     av_packet_rescale_ts(pkt, ost->mux_timebase, ost->st->time_base);
 
-    if (fix_dts && !(s->oformat->flags & AVFMT_NOTIMESTAMPS)) {
+
+    if (fix_dts && !(s->oformat->flags & AVFMT_NOTIMESTAMPS))  {
+
         if (pkt->dts != AV_NOPTS_VALUE &&
             pkt->pts != AV_NOPTS_VALUE &&
             pkt->dts > pkt->pts) {
@@ -1649,7 +1677,8 @@ static void print_final_stats(int64_t total_size) {
 }
 
 int should_print = 0;
-static void print_report(int is_last_report, int64_t timer_start, int64_t cur_time) {
+static void print_report(int is_last_report, int64_t timer_start, int64_t cur_time)
+{
     AVBPrint buf, buf_script;
     OutputStream *ost;
     AVFormatContext *oc;
@@ -1846,25 +1875,30 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
     }
     av_bprint_finalize(&buf, NULL);
 
-    should_print = should_print ? 0 : 1;
-    if (progress_filename && should_print && ((cur_time - timer_start) / 1000000) % 30 == 0) {
+
+     should_print = should_print ? 0 : 1;
+     if (progress_filename && should_print && ((cur_time - timer_start) / 1000000) % 30 == 0) {
+
         AVIOContext *avio = NULL;
         ret = avio_open2(&avio, progress_filename, AVIO_FLAG_WRITE, &int_cb, NULL);
         if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR, "Failed to open progress URL \"%s\": %s\n",
                    progress_filename, av_err2str(ret));
             return;
-        }
-        av_bprintf(&buf_script, "progress=%s\n",
-                   is_last_report ? "end" : "continue");
+
+         }
+         av_bprintf(&buf_script, "progress=%s\n",
+                    is_last_report ? "end" : "continue");
         avio_write(avio, buf_script.str,
-                   FFMIN(buf_script.len, buf_script.size - 1));
+                    FFMIN(buf_script.len, buf_script.size - 1));
         avio_flush(avio);
-        av_bprint_finalize(&buf_script, NULL);
+         av_bprint_finalize(&buf_script, NULL);
+
         if ((ret = avio_closep(&avio)) < 0)
             av_log(NULL, AV_LOG_ERROR,
                    "Error closing progress log, loss of information possible: %s\n", av_err2str(ret));
-    }
+     }
+
 
     first_report = 0;
 

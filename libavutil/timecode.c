@@ -46,7 +46,7 @@ int av_timecode_adjust_ntsc_framenum2(int framenum, int fps)
     d = framenum / frames_per_10mins;
     m = framenum % frames_per_10mins;
 
-    return framenum + 9 * drop_frames * d + drop_frames * ((m - drop_frames) / (frames_per_10mins / 10));
+    return framenum + 9U * drop_frames * d + drop_frames * ((m - drop_frames) / (frames_per_10mins / 10));
 }
 
 uint32_t av_timecode_get_smpte_from_framenum(const AVTimecode *tc, int framenum)
@@ -252,7 +252,7 @@ int av_timecode_init_from_string(AVTimecode *tc, AVRational rate, const char *st
     char c;
     int hh, mm, ss, ff, flags;
 
-    if (sscanf(str, "%d:%d:%d%c%d", &hh, &mm, &ss, &c, &ff) != 5) {
+    if (sscanf(str, "%02u:%02u:%02u%c%02u", &hh, &mm, &ss, &c, &ff) != 5) {
         av_log(log_ctx, AV_LOG_ERROR, "Unable to parse timecode, "
                                       "syntax: hh:mm:ss[:;.]ff\n");
         return AVERROR_INVALIDDATA;
